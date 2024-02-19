@@ -1,0 +1,107 @@
+From 61c26be76399cf285356239d51d386dbc3d17a6f Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@traphandler.com>
+Date: Fri, 28 Jul 2023 17:37:29 +0200
+Subject: [PATCH 5/6] leds: class: Store the color index in struct led_classdev
+
+Store the color of the LED so that it is not lost after the LED's
+name has been composed. This color information can then be exposed to
+the user space or used by the LED consumer.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@traphandler.com>
+Link: https://lore.kernel.org/r/20230728153731.3742339-3-jjhiblot@traphandler.com
+Signed-off-by: Lee Jones <lee@kernel.org>
+(cherry picked from commit c7d80059b086c4986cd994a1973ec7a5d75f8eea)
+---
+ Documentation/ABI/testing/sysfs-class-led |  9 +++++++++
+ drivers/leds/led-class.c                  | 21 +++++++++++++++++++++
+ include/linux/leds.h                      |  1 +
+ 3 files changed, 31 insertions(+)
+
+diff --git a/Documentation/ABI/testing/sysfs-class-led b/Documentation/ABI/testing/sysfs-class-led
+index 2e24ac3bd7ef..b2ff0012c0f2 100644
+--- a/Documentation/ABI/testing/sysfs-class-led
++++ b/Documentation/ABI/testing/sysfs-class-led
+@@ -59,6 +59,15 @@ Description:
+ 		brightness. Reading this file when no hw brightness change
+ 		event has happened will return an ENODATA error.
+ 
++What:		/sys/class/leds/<led>/color
++Date:		June 2023
++KernelVersion:	6.5
++Description:
++		Color of the LED.
++
++		This is a read-only file. Reading this file returns the color
++		of the LED as a string (e.g: "red", "green", "multicolor").
++
+ What:		/sys/class/leds/<led>/trigger
+ Date:		March 2006
+ KernelVersion:	2.6.17
+diff --git a/drivers/leds/led-class.c b/drivers/leds/led-class.c
+index b2ca5e87bd8c..ad52c58d59d8 100644
+--- a/drivers/leds/led-class.c
++++ b/drivers/leds/led-class.c
+@@ -74,6 +74,19 @@ static ssize_t max_brightness_show(struct device *dev,
+ }
+ static DEVICE_ATTR_RO(max_brightness);
+ 
++static ssize_t color_show(struct device *dev,
++		struct device_attribute *attr, char *buf)
++{
++	const char *color_text = "invalid";
++	struct led_classdev *led_cdev = dev_get_drvdata(dev);
++
++	if (led_cdev->color < LED_COLOR_ID_MAX)
++		color_text = led_colors[led_cdev->color];
++
++	return sysfs_emit(buf, "%s\n", color_text);
++}
++static DEVICE_ATTR_RO(color);
++
+ #ifdef CONFIG_LEDS_TRIGGERS
+ static BIN_ATTR(trigger, 0644, led_trigger_read, led_trigger_write, 0);
+ static struct bin_attribute *led_trigger_bin_attrs[] = {
+@@ -88,6 +101,7 @@ static const struct attribute_group led_trigger_group = {
+ static struct attribute *led_class_attrs[] = {
+ 	&dev_attr_brightness.attr,
+ 	&dev_attr_max_brightness.attr,
++	&dev_attr_color.attr,
+ 	NULL,
+ };
+ 
+@@ -387,6 +401,10 @@ int led_classdev_register_ext(struct device *parent,
+ 			fwnode_property_read_u32(init_data->fwnode,
+ 				"max-brightness",
+ 				&led_cdev->max_brightness);
++
++			if (fwnode_property_present(init_data->fwnode, "color"))
++				fwnode_property_read_u32(init_data->fwnode, "color",
++							 &led_cdev->color);
+ 		}
+ 	} else {
+ 		proposed_name = led_cdev->name;
+@@ -396,6 +414,9 @@ int led_classdev_register_ext(struct device *parent,
+ 	if (ret < 0)
+ 		return ret;
+ 
++	if (led_cdev->color >= LED_COLOR_ID_MAX)
++		dev_warn(parent, "LED %s color identifier out of range\n", final_name);
++
+ 	mutex_init(&led_cdev->led_access);
+ 	mutex_lock(&led_cdev->led_access);
+ 	led_cdev->dev = device_create_with_groups(leds_class, parent, 0,
+diff --git a/include/linux/leds.h b/include/linux/leds.h
+index 9ecb31020b16..6d51be8bd76d 100644
+--- a/include/linux/leds.h
++++ b/include/linux/leds.h
+@@ -71,6 +71,7 @@ struct led_classdev {
+ 	const char		*name;
+ 	unsigned int brightness;
+ 	unsigned int max_brightness;
++	unsigned int color;
+ 	int			 flags;
+ 
+ 	/* Lower 16 bits reflect status */
+-- 
+2.43.1
+

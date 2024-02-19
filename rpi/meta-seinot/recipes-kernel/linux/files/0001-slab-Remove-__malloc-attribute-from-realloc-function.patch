@@ -1,0 +1,118 @@
+From a860005dd04e2b2fde9e50d87aed194adc037377 Mon Sep 17 00:00:00 2001
+From: Kees Cook <keescook@chromium.org>
+Date: Fri, 23 Sep 2022 13:28:07 -0700
+Subject: [PATCH 1/6] slab: Remove __malloc attribute from realloc functions
+
+The __malloc attribute should not be applied to "realloc" functions, as
+the returned pointer may alias the storage of the prior pointer. Instead
+of splitting __malloc from __alloc_size, which would be a huge amount of
+churn, just create __realloc_size for the few cases where it is needed.
+
+Thanks to Geert Uytterhoeven <geert@linux-m68k.org> for reporting build
+failures with gcc-8 in earlier version which tried to remove the #ifdef.
+While the "alloc_size" attribute is available on all GCC versions, I
+forgot that it gets disabled explicitly by the kernel in GCC < 9.1 due
+to misbehaviors. Add a note to the compiler_attributes.h entry for it.
+
+Cc: Christoph Lameter <cl@linux.com>
+Cc: Pekka Enberg <penberg@kernel.org>
+Cc: David Rientjes <rientjes@google.com>
+Cc: Joonsoo Kim <iamjoonsoo.kim@lge.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Vlastimil Babka <vbabka@suse.cz>
+Cc: Roman Gushchin <roman.gushchin@linux.dev>
+Cc: Hyeonggon Yoo <42.hyeyoo@gmail.com>
+Cc: Marco Elver <elver@google.com>
+Cc: linux-mm@kvack.org
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
+(cherry picked from commit 9ed9cac1850a2a55674b4a17100c50b46f645921)
+---
+ include/linux/compiler_attributes.h | 3 ++-
+ include/linux/compiler_types.h      | 8 +++++---
+ include/linux/slab.h                | 8 +++++---
+ mm/slab_common.c                    | 4 ++--
+ 4 files changed, 14 insertions(+), 9 deletions(-)
+
+diff --git a/include/linux/compiler_attributes.h b/include/linux/compiler_attributes.h
+index 3de06a8fae73..4e5f4fcd4ea5 100644
+--- a/include/linux/compiler_attributes.h
++++ b/include/linux/compiler_attributes.h
+@@ -35,7 +35,8 @@
+ 
+ /*
+  * Note: do not use this directly. Instead, use __alloc_size() since it is conditionally
+- * available and includes other attributes.
++ * available and includes other attributes. For GCC < 9.1, __alloc_size__ gets undefined
++ * in compiler-gcc.h, due to misbehaviors.
+  *
+  *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-alloc_005fsize-function-attribute
+  * clang: https://clang.llvm.org/docs/AttributeReference.html#alloc-size
+diff --git a/include/linux/compiler_types.h b/include/linux/compiler_types.h
+index 4f2203c4a257..06ba85c17ddf 100644
+--- a/include/linux/compiler_types.h
++++ b/include/linux/compiler_types.h
+@@ -252,14 +252,16 @@ struct ftrace_likely_data {
+ 
+ /*
+  * Any place that could be marked with the "alloc_size" attribute is also
+- * a place to be marked with the "malloc" attribute. Do this as part of the
+- * __alloc_size macro to avoid redundant attributes and to avoid missing a
+- * __malloc marking.
++ * a place to be marked with the "malloc" attribute, except those that may
++ * be performing a _reallocation_, as that may alias the existing pointer.
++ * For these, use __realloc_size().
+  */
+ #ifdef __alloc_size__
+ # define __alloc_size(x, ...)	__alloc_size__(x, ## __VA_ARGS__) __malloc
++# define __realloc_size(x, ...)	__alloc_size__(x, ## __VA_ARGS__)
+ #else
+ # define __alloc_size(x, ...)	__malloc
++# define __realloc_size(x, ...)
+ #endif
+ 
+ #ifndef asm_volatile_goto
+diff --git a/include/linux/slab.h b/include/linux/slab.h
+index 083f3ce550bc..ed07ab22d17f 100644
+--- a/include/linux/slab.h
++++ b/include/linux/slab.h
+@@ -181,7 +181,7 @@ int kmem_cache_shrink(struct kmem_cache *);
+ /*
+  * Common kmalloc functions provided by all allocators
+  */
+-void * __must_check krealloc(const void *, size_t, gfp_t);
++void * __must_check krealloc(const void *objp, size_t new_size, gfp_t flags) __realloc_size(2);
+ void kfree(const void *);
+ void kfree_sensitive(const void *);
+ size_t __ksize(const void *);
+@@ -638,8 +638,10 @@ static inline void *kmalloc_array(size_t n, size_t size, gfp_t flags)
+  * @new_size: new size of a single member of the array
+  * @flags: the type of memory to allocate (see kmalloc)
+  */
+-static __must_check inline void *
+-krealloc_array(void *p, size_t new_n, size_t new_size, gfp_t flags)
++static inline __realloc_size(2, 3) void * __must_check krealloc_array(void *p,
++								      size_t new_n,
++								      size_t new_size,
++								      gfp_t flags)
+ {
+ 	size_t bytes;
+ 
+diff --git a/mm/slab_common.c b/mm/slab_common.c
+index 022319e7deaf..81a54ab900fe 100644
+--- a/mm/slab_common.c
++++ b/mm/slab_common.c
+@@ -1194,8 +1194,8 @@ module_init(slab_proc_init);
+ 
+ #endif /* CONFIG_SLAB || CONFIG_SLUB_DEBUG */
+ 
+-static __always_inline void *__do_krealloc(const void *p, size_t new_size,
+-					   gfp_t flags)
++static __always_inline __realloc_size(2) void *
++__do_krealloc(const void *p, size_t new_size, gfp_t flags)
+ {
+ 	void *ret;
+ 	size_t ks;
+-- 
+2.43.1
+

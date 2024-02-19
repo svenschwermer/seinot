@@ -1,0 +1,42 @@
+From 1d3a4885c90386c75810f616f0566213386b8adf Mon Sep 17 00:00:00 2001
+From: Astrid Rost <astrid.rost@axis.com>
+Date: Mon, 3 Jul 2023 15:03:13 +0200
+Subject: [PATCH 4/6] led: led-class: Read max-brightness from devicetree
+
+Normally, the maximum brightness is determined by the hardware, and this
+property is not required. This property is used to set a software limit.
+It could happen that an LED is made so bright that it gets damaged or
+causes damage due to restrictions in a specific system, such as mounting
+conditions.
+Note that this flag is mainly used for PWM-LEDs, where it is not possible
+to map brightness to current. Drivers for other controllers should use
+led-max-microamp.
+
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Signed-off-by: Astrid Rost <astrid.rost@axis.com>
+Acked-by: Jacek Anaszewski <jacek.anaszewski@gmail.com>
+Link: https://lore.kernel.org/r/20230703130313.548519-3-astrid.rost@axis.com
+Signed-off-by: Lee Jones <lee@kernel.org>
+(cherry picked from commit 7cd7a2995ecde065a486e077deb002426975fa40)
+---
+ drivers/leds/led-class.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/leds/led-class.c b/drivers/leds/led-class.c
+index ac44ef5835b0..b2ca5e87bd8c 100644
+--- a/drivers/leds/led-class.c
++++ b/drivers/leds/led-class.c
+@@ -383,6 +383,10 @@ int led_classdev_register_ext(struct device *parent,
+ 			if (fwnode_property_present(init_data->fwnode,
+ 						    "retain-state-shutdown"))
+ 				led_cdev->flags |= LED_RETAIN_AT_SHUTDOWN;
++
++			fwnode_property_read_u32(init_data->fwnode,
++				"max-brightness",
++				&led_cdev->max_brightness);
+ 		}
+ 	} else {
+ 		proposed_name = led_cdev->name;
+-- 
+2.43.1
+

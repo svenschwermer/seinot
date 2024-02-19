@@ -1,0 +1,71 @@
+From b43fac286ea625de1b306a26d32d9b269ad8598c Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@traphandler.com>
+Date: Fri, 28 Jul 2023 17:37:28 +0200
+Subject: [PATCH 3/6] leds: Provide devm_of_led_get_optional()
+
+Add an optional variant of devm_of_led_get(). It behaves the same as
+devm_of_led_get() except where the LED doesn't exist. In this case,
+instead of returning -ENOENT, the function returns NULL.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@traphandler.com>
+Reviewed-by: Andy Shevchenko <andy.shevchenko@gmail.com>
+Link: https://lore.kernel.org/r/20230728153731.3742339-2-jjhiblot@traphandler.com
+Signed-off-by: Lee Jones <lee@kernel.org>
+(cherry picked from commit afb48153220d35f330d0d979792920a31f7d9a81)
+---
+ drivers/leds/led-class.c | 25 +++++++++++++++++++++++++
+ include/linux/leds.h     |  2 ++
+ 2 files changed, 27 insertions(+)
+
+diff --git a/drivers/leds/led-class.c b/drivers/leds/led-class.c
+index f4bb02f6e042..ac44ef5835b0 100644
+--- a/drivers/leds/led-class.c
++++ b/drivers/leds/led-class.c
+@@ -303,6 +303,31 @@ struct led_classdev *__must_check devm_of_led_get(struct device *dev,
+ }
+ EXPORT_SYMBOL_GPL(devm_of_led_get);
+ 
++/**
++ * devm_of_led_get_optional - Resource-managed request of an optional LED device
++ * @dev:	LED consumer
++ * @index:	index of the LED to obtain in the consumer
++ *
++ * The device node of the device is parsed to find the requested LED device.
++ * The LED device returned from this function is automatically released
++ * on driver detach.
++ *
++ * @return a pointer to a LED device, ERR_PTR(errno) on failure and NULL if the
++ * led was not found.
++ */
++struct led_classdev *__must_check devm_of_led_get_optional(struct device *dev,
++							int index)
++{
++	struct led_classdev *led;
++
++	led = devm_of_led_get(dev, index);
++	if (IS_ERR(led) && PTR_ERR(led) == -ENOENT)
++		return NULL;
++
++	return led;
++}
++EXPORT_SYMBOL_GPL(devm_of_led_get_optional);
++
+ static int led_classdev_next_name(const char *init_name, char *name,
+ 				  size_t len)
+ {
+diff --git a/include/linux/leds.h b/include/linux/leds.h
+index cb9a65b4b0f4..9ecb31020b16 100644
+--- a/include/linux/leds.h
++++ b/include/linux/leds.h
+@@ -218,6 +218,8 @@ extern struct led_classdev *of_led_get(struct device_node *np, int index);
+ extern void led_put(struct led_classdev *led_cdev);
+ struct led_classdev *__must_check devm_of_led_get(struct device *dev,
+ 						  int index);
++struct led_classdev *__must_check devm_of_led_get_optional(struct device *dev,
++						  int index);
+ 
+ /**
+  * led_blink_set - set blinking with software fallback
+-- 
+2.43.1
+

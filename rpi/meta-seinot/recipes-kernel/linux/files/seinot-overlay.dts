@@ -1,0 +1,36 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target = <&leds>;
+		__overlay__ {
+			gn_led: led-green {
+				gpios = <&gpio 24 GPIO_ACTIVE_LOW>;
+				color = <LED_COLOR_ID_GREEN>;
+				default-state = "on";
+			};
+			rd_led: led-red {
+				gpios = <&gpio 23 GPIO_ACTIVE_LOW>;
+				color = <LED_COLOR_ID_RED>;
+				default-state = "on";
+			};
+		};
+	};
+
+	fragment@1 {
+		target-path = "/";
+		__overlay__ {
+			multi-led {
+				compatible = "leds-group-multicolor";
+				color = <LED_COLOR_ID_MULTI>;
+				function = LED_FUNCTION_INDICATOR;
+				leds = <&gn_led>, <&rd_led>;
+				linux,default-trigger = "timer";
+				led-pattern = <200 200>;
+			};
+		};
+	};
+};

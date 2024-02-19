@@ -1,3 +1,12 @@
 [submodule "openwrt"]
 	path = openwrt
 	url = git@github.com:svenschwermer/openwrt
+[submodule "rpi/meta-openembedded"]
+	path = rpi/meta-openembedded
+	url = git://git.openembedded.org/meta-openembedded
+[submodule "rpi/meta-raspberrypi"]
+	path = rpi/meta-raspberrypi
+	url = git://git.yoctoproject.org/meta-raspberrypi
+[submodule "rpi/poky"]
+	path = rpi/poky
+	url = git://git.yoctoproject.org/poky

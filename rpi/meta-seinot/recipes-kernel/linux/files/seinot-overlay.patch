@@ -1,0 +1,12 @@
+diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
+index bb9f5bf9d43a..a883b1b3a593 100644
+--- a/arch/arm/boot/dts/overlays/Makefile
++++ b/arch/arm/boot/dts/overlays/Makefile
+@@ -214,6 +214,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
+ 	sdio.dtbo \
+ 	seeed-can-fd-hat-v1.dtbo \
+ 	seeed-can-fd-hat-v2.dtbo \
++	seinot.dtbo \
+ 	sh1106-spi.dtbo \
+ 	si446x-spi0.dtbo \
+ 	smi.dtbo \

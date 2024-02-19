@@ -1,0 +1,5 @@
+- dropbear config, persistent key, ec key
+- wifi (persistent) config
+- slim down kernel config
+- create device tree overlay
+- write systemd unit file
