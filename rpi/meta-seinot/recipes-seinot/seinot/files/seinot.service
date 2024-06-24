@@ -1,0 +1,10 @@
+[Unit]
+Description=Tag-activated music player
+
+[Service]
+ExecStart=@bindir@/seinot
+Environment=LIBNFC_DEFAULT_DEVICE=pn532_uart:/dev/ttyS0
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

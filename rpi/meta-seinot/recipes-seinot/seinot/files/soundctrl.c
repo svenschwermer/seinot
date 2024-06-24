@@ -31,7 +31,7 @@ static snd_mixer_elem_t *get_selem(snd_mixer_t *mixer, const char *selem_name)
         ERR("Unable to find simple control \"%s\"", selem_name);
     return elem;
 }
-
+#if 0
 static int unmute_selem(snd_mixer_t *mixer, const char *selem_name)
 {
     snd_mixer_elem_t *elem = get_selem(mixer, selem_name);
@@ -42,7 +42,7 @@ static int unmute_selem(snd_mixer_t *mixer, const char *selem_name)
         ERR("Failed to unmute \"%s\": %s", selem_name, snd_strerror(err));
     return err;
 }
-
+#endif
 struct event_func_data
 {
     snd_mixer_elem_t *elem;
@@ -121,7 +121,7 @@ int init_sound(void)
         ERR("Mixer load error: %s", snd_strerror(ret));
         goto close_mixer;
     }
-
+#if 0
     ret = unmute_selem(mixer, "Left Output Mixer PCM");
     if (ret < 0)
         goto close_mixer;
@@ -142,7 +142,7 @@ int init_sound(void)
         ERR("Failed to set volume: %s", snd_strerror(ret));
         goto close_mixer;
     }
-
+#endif
     struct event_func_data *data = malloc(sizeof(struct event_func_data));
     if (!data)
     {
@@ -150,7 +150,7 @@ int init_sound(void)
         goto close_mixer;
     }
 
-    data->elem = get_selem(mixer, "Playback");
+    data->elem = get_selem(mixer, "Digital");
     if (!data->elem)
     {
         ret = -1;

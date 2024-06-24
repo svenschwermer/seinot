@@ -6,6 +6,7 @@ IMAGE_FEATURES = "\
     ${EXTRA_IMAGE_FEATURES} \
     "
 IMAGE_INSTALL = "\
+    alsa-utils \
     packagegroup-core-boot \
     seinot \
     systemd-analyze \

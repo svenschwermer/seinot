@@ -1,0 +1,10 @@
+[Unit]
+DefaultDependencies=no
+Conflicts=umount.target
+Before=local-fs.target umount.target
+
+[Mount]
+What=/mnt/state/wpa_supplicant
+Where=/etc/wpa_supplicant
+Type=none
+Options=bind

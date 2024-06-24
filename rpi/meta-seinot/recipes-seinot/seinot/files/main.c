@@ -14,7 +14,7 @@
 #include "nfc.h"
 #include "soundctrl.h"
 
-static const char *path_prefix = "/mnt/";
+static const char *path_prefix = "/mnt/data/";
 static volatile bool shutdown = false;
 
 void signal_handler(int sig)

@@ -46,6 +46,8 @@ playback_handle playback_init(void)
         goto del_mpg123;
     }
 
+    data->thread_started = false;
+
     return data;
 
 del_mpg123:
