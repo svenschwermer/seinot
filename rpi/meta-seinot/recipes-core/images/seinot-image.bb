@@ -10,6 +10,7 @@ IMAGE_INSTALL = "\
     packagegroup-core-boot \
     seinot \
     systemd-analyze \
+    wifi \
     wpa-supplicant \
     ${CORE_IMAGE_EXTRA_INSTALL} \
     ${MACHINE_EXTRA_RRECOMMENDS} \
