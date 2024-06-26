@@ -12,8 +12,6 @@
 #include <linux/input.h>
 #include <alsa/asoundlib.h>
 
-static const long initial_volume_dB = -30;
-
 static double get_normalized_volume(snd_mixer_elem_t *elem,
                                     snd_mixer_selem_channel_id_t channel,
                                     long min, long max);
@@ -45,6 +43,10 @@ static int unmute_selem(snd_mixer_t *mixer, const char *selem_name)
 #endif
 struct event_func_data
 {
+    double initial_volume; // 0..1
+    double volume_increment;
+    double max_volume; // 0..1
+
     snd_mixer_elem_t *elem;
     long min, max;
     int fd;
@@ -69,12 +71,14 @@ static void *event_func(void *param)
 
         double cur_vol = get_normalized_volume(data->elem, SND_MIXER_SCHN_FRONT_LEFT,
                                                data->min, data->max);
+        if (cur_vol > data->max_volume)
+            cur_vol = data->max_volume;
 
-        double set_vol = cur_vol + 0.02 * ev.value; // ±2%
+        double set_vol = cur_vol + data->volume_increment * ev.value;
         if (set_vol < 0.0)
             set_vol = 0.0;
-        else if (set_vol > 1.0)
-            set_vol = 1.0;
+        else if (set_vol > data->max_volume)
+            set_vol = data->max_volume;
 
         if (cur_vol == set_vol)
         {
@@ -82,11 +86,39 @@ static void *event_func(void *param)
             continue;
         }
 
-        INFO("Setting volume to %.0f%%", set_vol * 100);
+        INFO("Setting volume to %.1f%% (was %.1f%%)", set_vol * 100, cur_vol * 100);
         set_normalized_volume(data->elem, set_vol, 0, data->min, data->max);
     }
 
     return NULL;
+}
+
+static int get_env_percent(const char *name, double *val, double default_percent)
+{
+    const char *s = getenv(name);
+    if (!s)
+    {
+        INFO("Defaulting %s to %.1f%%", name, default_percent);
+        *val = default_percent / 100;
+        return 0;
+    }
+
+    char *endptr = NULL;
+    errno = 0;
+    *val = strtod(s, &endptr);
+    if (errno)
+    {
+        ERR("Failed to convert environment variable %s (=%s) to floating-point number: %s", name, s, strerror(errno));
+        return 1;
+    }
+    if (endptr == s)
+    {
+        ERR("Failed to convert environment variable %s (=%s) to floating-point number", name, s);
+        return 1;
+    }
+
+    *val /= 100;
+    return 0;
 }
 
 int init_sound(void)
@@ -150,6 +182,13 @@ int init_sound(void)
         goto close_mixer;
     }
 
+    if (get_env_percent("INITIAL_VOLUME_PERCENT", &data->initial_volume, 20))
+        goto free_data;
+    if (get_env_percent("VOLUME_INCREMENT_PERCENT", &data->volume_increment, 2))
+        goto free_data;
+    if (get_env_percent("MAX_VOLUME_PERCENT", &data->max_volume, 50))
+        goto free_data;
+
     data->elem = get_selem(mixer, "Digital");
     if (!data->elem)
     {
@@ -164,8 +203,8 @@ int init_sound(void)
         goto free_data;
     }
 
-    INFO("Setting initial volume to %lddB", initial_volume_dB);
-    ret = snd_mixer_selem_set_playback_dB_all(data->elem, initial_volume_dB * 100, 0);
+    INFO("Setting initial volume to %.0f%%", data->initial_volume * 100);
+    ret = set_normalized_volume(data->elem, data->initial_volume, 0, data->min, data->max);
     if (ret < 0)
         ERR("Failed to set initial volume: %s", snd_strerror(ret));
 
