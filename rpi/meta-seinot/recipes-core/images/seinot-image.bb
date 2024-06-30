@@ -1,6 +1,7 @@
 SUMMARY = "A small image catered to be used in the seinot jukebox"
 
 IMAGE_FEATURES = "\
+    allow-root-login \
     read-only-rootfs \
     ssh-server-dropbear \
     ${EXTRA_IMAGE_FEATURES} \
