@@ -5,8 +5,8 @@ Description=Tag-activated music player
 ExecStart=@bindir@/seinot
 Environment=LIBNFC_DEFAULT_DEVICE=pn532_uart:/dev/ttyS0
 Environment=INITIAL_VOLUME_PERCENT=20
-Environment=VOLUME_INCREMENT_PERCENT=2
-Environment=MAX_VOLUME_PERCENT=50
+Environment=VOLUME_INCREMENT_PERCENT=1
+Environment=MAX_VOLUME_PERCENT=40
 Restart=on-failure
 
 [Install]
