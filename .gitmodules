@@ -1,6 +1,3 @@
-[submodule "openwrt"]
-	path = openwrt
-	url = git@github.com:svenschwermer/openwrt
 [submodule "rpi/meta-openembedded"]
 	path = rpi/meta-openembedded
 	url = git://git.openembedded.org/meta-openembedded
