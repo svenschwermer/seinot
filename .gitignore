@@ -3,3 +3,7 @@ fp-info-cache
 seinot-panel-backups/
 *.wav
 *.mp3
+gerber.zip
+gerber/
+seinot-rpi-adapter-backups/
+songs/
